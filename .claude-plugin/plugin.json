@@ -1,6 +1,6 @@
 {
   "name": "claude-factory",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "An evolving delivery harness for Claude Code projects, with a bounded autonomous runner",
   "author": {
     "name": "Your team"
