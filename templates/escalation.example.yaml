@@ -1,0 +1,21 @@
+# Written by the agent when it stops rather than guessing. The point of an
+# escalation is to make the human decision small and well-posed.
+
+task: ENG-142
+status: blocked
+attempts: 2
+failed_gate: integration_test
+
+evidence:
+  - run: .claude/factory/runs/ENG-142-attempt-2.json
+  - test_log: artifacts/ENG-142/integration.log
+
+hypothesis: webhook sandbox credentials unavailable in CI
+hypothesis_verified: false
+
+requested_human_decision: provide test credential or revise integration boundary
+
+# What was ruled out, so the human does not repeat the work.
+ruled_out:
+  - signature verification logic (unit tests pass against recorded fixtures)
+  - payload parsing (contract test passes)

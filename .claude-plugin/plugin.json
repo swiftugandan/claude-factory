@@ -1,0 +1,18 @@
+{
+  "name": "claude-factory",
+  "version": "0.2.0",
+  "description": "An evolving delivery harness for Claude Code projects, with a bounded autonomous runner",
+  "author": {
+    "name": "Your team"
+  },
+  "keywords": [
+    "claude-code",
+    "agentic-engineering",
+    "testing",
+    "delivery",
+    "operations",
+    "autonomous-delivery",
+    "ci",
+    "headless"
+  ]
+}

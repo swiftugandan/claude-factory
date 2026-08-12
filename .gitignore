@@ -1,0 +1,7 @@
+node_modules/
+*.tsbuildinfo
+.DS_Store
+
+# Worktrees created by runner/run-task.sh live beside the repo, but guard against
+# a misconfigured FACTORY_WORKTREE_ROOT dropping them inside it.
+/worktrees/

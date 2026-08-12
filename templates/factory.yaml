@@ -1,0 +1,80 @@
+version: 1
+
+project:
+  name: TODO
+  language: TODO
+  package_manager: TODO
+
+commands:
+  setup: TODO
+  lint: TODO
+  typecheck: TODO
+  test: TODO
+  test_integration: TODO
+  build: TODO
+  deploy_staging: TODO
+  deploy_production: TODO
+  rollback: TODO
+
+quality_gates:
+  require_tests_for_behavior_change: true
+  require_typecheck: true
+  require_review_for_production_code: true
+  require_human_approval_for_production_deploy: true
+  require_rollback_plan_for_schema_change: true
+
+protected_paths:
+  - ".env"
+  - ".env.*"
+  - ".git/"
+  - "package-lock.json"
+  - "pnpm-lock.yaml"
+  - "yarn.lock"
+
+write_boundaries:
+  production:
+    allowed_via: human-approved-ci-only
+  external_services:
+    default: read-only
+  migrations:
+    require: forward-and-rollback-plan
+
+learning:
+  failure_ledger: ".claude/factory/failures.jsonl"
+  regression_test_dir: ".claude/evals/regression"
+  mutation_dir: ".claude/factory/mutations"
+
+autonomy:
+  # Enforced by runner/config.ts, not advisory. A missing or unreadable manifest
+  # resolves to 'off'. Start in pr_only and move a level only after watching real
+  # failure modes at the current one. Each level is a superset of the previous.
+  #   off       - interactive use only
+  #   pr_only   - claim, branch, draft PR; no merges, no repair attempts
+  #   repair    - one bounded repair attempt after a deterministic failure
+  #   queue     - claim from the issue queue on a schedule
+  #   automerge - low-risk classes may auto-merge with protected-branch checks
+  level: pr_only
+
+  concurrency: 1
+  base_branch: main
+  ready_label: "factory:ready"
+
+  # Nothing outside this list may ever auto-merge, regardless of level.
+  auto_merge_allowed_classes:
+    - docs_only
+    - tests_only
+    - dependency_patch_with_passing_ci
+
+  # Actions the running agent may never take, at any autonomy level.
+  never_autonomous:
+    - merge_to_protected_branch
+    - apply_database_migration
+    - deploy_production
+    - change_repository_settings_or_secrets
+    - modify_hooks_ci_or_merge_policy
+    - widen_its_own_permissions
+
+  budgets:
+    default_max_runtime_minutes: 30
+    default_max_attempts: 2
+    max_open_factory_prs: 5

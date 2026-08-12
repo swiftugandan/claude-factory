@@ -1,0 +1,37 @@
+# Example task contract. The dispatcher reads this from a fenced yaml block in a
+# GitHub issue body; this file shows the same shape for local or manual queueing.
+#
+# A task is only claimable when it is fully specified. The factory must not pick
+# vaguely worded ideas off a roadmap -- an unclear task produces an unclear PR.
+
+id: ENG-142
+title: Add webhook idempotency
+status: ready
+owner: "@payments-team"
+
+acceptance_criteria:
+  - duplicate event delivery creates one logical record
+  - invalid signatures are rejected
+  - failure path emits an observable error
+
+allowed_paths:
+  - src/billing/**
+  - tests/billing/**
+
+forbidden_paths:
+  - src/billing/legacy/**
+
+context:
+  - docs/runbooks/stripe-webhooks.md
+  - src/billing/README.md
+
+risk:
+  level: medium
+  requires_human_merge: true
+  requires_human_deploy: true
+  touches_schema: false
+  touches_external_writes: true
+
+budget:
+  max_runtime_minutes: 30
+  max_attempts: 2
