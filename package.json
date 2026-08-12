@@ -2,6 +2,7 @@
   "name": "claude-factory",
   "version": "0.3.0",
   "private": true,
+  "license": "MIT",
   "description": "Runner and self-tests for the claude-factory delivery harness",
   "type": "module",
   "engines": {

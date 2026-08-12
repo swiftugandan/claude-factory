@@ -150,3 +150,7 @@ repair loop, and explicit human approval boundaries around merge and deploy.
 
 - [Claude Code extension model](https://code.claude.com/docs/en/features-overview)
 - [Claude Code hooks](https://code.claude.com/docs/en/hooks-guide)
+
+## License
+
+MIT — see [LICENSE](LICENSE).
