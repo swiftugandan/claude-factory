@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "swiftugandan-factory",
+  "description": "The claude-factory delivery harness, published as a single-plugin marketplace so it can be installed straight from GitHub.",
+  "owner": {
+    "name": "Swift Ugandan"
+  },
+  "plugins": [
+    {
+      "name": "claude-factory",
+      "source": "./",
+      "description": "Installs a project-local operating harness: a factory skill, specialist subagents, enforced hooks, a failure ledger, and a bounded autonomous runner that opens draft PRs for human review.",
+      "category": "development",
+      "keywords": [
+        "agentic-engineering",
+        "testing",
+        "delivery",
+        "operations",
+        "autonomous-delivery",
+        "ci",
+        "headless"
+      ]
+    }
+  ]
+}

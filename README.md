@@ -9,9 +9,29 @@ factory: Claude is the worker; the repository is its evolving workshop.
 
 ## Install
 
+`claude plugin install` resolves plugins from marketplaces, not from paths or URLs, so add
+this repo as one first. It ships its own single-plugin marketplace manifest:
+
 ```bash
-claude plugin install /path/to/claude-factory
+claude plugin marketplace add swiftugandan/claude-factory
+claude plugin install claude-factory@swiftugandan-factory
 ```
+
+Restart Claude Code, then confirm it loaded:
+
+```bash
+claude plugin list          # claude-factory should appear
+```
+
+Working on the harness itself? Point the marketplace at your checkout instead, so edits
+take effect on restart without a round trip through GitHub:
+
+```bash
+claude plugin marketplace add /path/to/claude-factory
+```
+
+To back either out: `claude plugin uninstall claude-factory` and
+`claude plugin marketplace remove swiftugandan-factory`.
 
 Then, in any Claude-built project:
 
