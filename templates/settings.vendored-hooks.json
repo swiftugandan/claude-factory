@@ -1,0 +1,59 @@
+{
+  "_comment": [
+    "Only for projects that vendor the harness instead of installing the plugin —",
+    "typically a CI image that has the Claude CLI but no marketplace access.",
+    "Merge these entries into .claude/settings.json AFTER copying hooks/*.sh into .claude/hooks/.",
+    "",
+    "Do NOT use this alongside the installed plugin. The plugin registers the same four hooks",
+    "against ${CLAUDE_PLUGIN_ROOT}; adding these as well fires every hook twice, which writes",
+    "duplicate failure-ledger entries and makes the ledger's counts wrong — the one thing",
+    "/factory-evolve reads to decide what is worth preventing."
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-files.sh"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-harness.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/block-dangerous-bash.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-failure.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-dirty-worktree.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

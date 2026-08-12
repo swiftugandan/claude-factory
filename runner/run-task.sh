@@ -102,11 +102,23 @@ fi
 # If the hooks are not installed, that argument does not hold and this refuses to run.
 PERMISSION_MODE="${FACTORY_PERMISSION_MODE:-bypassPermissions}"
 if [ "$PERMISSION_MODE" = "bypassPermissions" ]; then
-  if [ ! -d "${REPO_ROOT}/.claude/hooks" ] || [ ! -f "${REPO_ROOT}/.claude/settings.json" ]; then
-    echo "run-task: refusing to run with bypassPermissions — .claude/hooks and" >&2
-    echo "run-task: .claude/settings.json must exist. Run /factory-bootstrap first." >&2
+  # The hooks may arrive either way: vendored into the project by /factory-bootstrap,
+  # or supplied by the installed plugin against ${CLAUDE_PLUGIN_ROOT}. Accept both,
+  # and require at least one — the whole justification for bypassing prompts is that
+  # something is still enforcing the boundary at tool time.
+  HOOKS_SOURCE=""
+  if [ -d "${REPO_ROOT}/.claude/hooks" ] && [ -f "${REPO_ROOT}/.claude/settings.json" ]; then
+    HOOKS_SOURCE="project (.claude/hooks)"
+  elif claude plugin list 2>/dev/null | grep -q "claude-factory"; then
+    HOOKS_SOURCE="plugin (claude-factory)"
+  fi
+  if [ -z "$HOOKS_SOURCE" ]; then
+    echo "run-task: refusing to run with bypassPermissions — no guardrail hooks found." >&2
+    echo "run-task: install the claude-factory plugin, or run /factory-bootstrap to" >&2
+    echo "run-task: vendor .claude/hooks and .claude/settings.json into this project." >&2
     exit 78
   fi
+  echo "run-task: guardrail hooks from ${HOOKS_SOURCE}"
 fi
 
 # A run without the factory skill is just an unsupervised agent with a prompt.

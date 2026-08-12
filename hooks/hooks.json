@@ -6,11 +6,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-files.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/protect-files.sh"
           },
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-harness.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/protect-harness.sh"
           }
         ]
       },
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/block-dangerous-bash.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/block-dangerous-bash.sh"
           }
         ]
       }
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-failure.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/capture-failure.sh"
           }
         ]
       }
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-dirty-worktree.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/check-dirty-worktree.sh"
           }
         ]
       }

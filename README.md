@@ -39,6 +39,34 @@ Then, in any Claude-built project:
 /factory-bootstrap
 ```
 
+## Starting a new project that carries the factory with it
+
+You do not have to install anything on the machine first. A project can declare the factory
+itself: commit [`templates/settings.plugin.json`](templates/settings.plugin.json) as the new
+project's `.claude/settings.json`, and anyone who clones it and opens Claude Code gets the
+plugin resolved straight from GitHub.
+
+```bash
+mkdir my-project && cd my-project && git init
+mkdir -p .claude
+curl -fsSL https://raw.githubusercontent.com/swiftugandan/claude-factory/main/templates/settings.plugin.json \
+  -o .claude/settings.json
+```
+
+Open Claude Code there and run `/factory-bootstrap`. The project now declares the tool it is
+built with the way a lockfile declares a dependency — there is no install step for a teammate
+to skip, and no README instruction that goes stale.
+
+The equivalent via the CLI, if you would rather not hand-write the file:
+
+```bash
+claude plugin marketplace add swiftugandan/claude-factory --scope project
+claude plugin install claude-factory@swiftugandan-factory --scope project
+```
+
+Both write the same two keys — `extraKnownMarketplaces` and `enabledPlugins` — into
+`.claude/settings.json`. Commit it.
+
 The bootstrap creates the project-local files Claude will actually use — `.claude/factory/factory.yaml`,
 the failure ledger, the hooks, and a `CLAUDE.md` operating contract.
 

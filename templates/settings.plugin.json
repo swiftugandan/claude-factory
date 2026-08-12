@@ -1,0 +1,20 @@
+{
+  "_comment": [
+    "Commit this as the new project's .claude/settings.json and the factory installs itself.",
+    "Anyone who clones the project and opens Claude Code gets the plugin resolved from GitHub —",
+    "no marketplace command, no install step, no README instruction anyone can skip.",
+    "The project declares the tool it is built with, the way a lockfile declares a dependency.",
+    "Remove this _comment key before committing if you prefer a clean settings file."
+  ],
+  "extraKnownMarketplaces": {
+    "swiftugandan-factory": {
+      "source": {
+        "source": "github",
+        "repo": "swiftugandan/claude-factory"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "claude-factory@swiftugandan-factory": true
+  }
+}
