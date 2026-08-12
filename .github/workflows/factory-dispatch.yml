@@ -1,0 +1,114 @@
+name: Factory Dispatcher
+
+# Claims ONE ready task per tick and runs it in an isolated worktree.
+# This workflow deliberately holds no deployment credential and cannot merge.
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_id:
+        description: "Claim a specific task instead of the oldest ready one"
+        required: false
+        type: string
+  schedule:
+    - cron: "*/30 * * * *"
+
+concurrency:
+  # One factory run at a time. Parallel runs make the failure ledger unreadable
+  # and let two agents claim overlapping paths.
+  group: factory-dispatcher
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  claim-and-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # Prompts cannot be answered in a headless run, so an unattended agent with
+      # interactive permissions simply denies every tool and produces an empty branch.
+      # Bypassing them is only defensible because the boundary is enforced outside the
+      # agent: hooks at tool time, allowed_paths after the run, and CI on the PR. This
+      # container is ephemeral and holds no deploy credential. run-task.sh refuses to
+      # use this mode unless the hooks are actually installed.
+      FACTORY_PERMISSION_MODE: bypassPermissions
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Claude Code and the factory plugin
+        run: |
+          set -euo pipefail
+          npm install -g @anthropic-ai/claude-code
+          # Without the plugin the run is just an unsupervised agent with a prompt:
+          # `/factory` would not resolve and none of the workflow rules would load.
+          claude plugin install "${FACTORY_PLUGIN_REF:-$GITHUB_WORKSPACE}" \
+            || echo "::warning::could not install the claude-factory plugin; run-task.sh will verify"
+        env:
+          FACTORY_PLUGIN_REF: ${{ vars.FACTORY_PLUGIN_REF }}
+
+      - name: Configure git identity
+        run: |
+          git config --global user.name "claude-factory[bot]"
+          git config --global user.email "claude-factory@users.noreply.github.com"
+
+      - name: Release stale claims
+        run: npx -y tsx runner/reconcile.ts
+
+      - name: Select one ready factory task
+        id: select
+        run: |
+          set -uo pipefail
+          if [ -n "${TASK_ID}" ]; then
+            npx -y tsx runner/dispatcher.ts --task "${TASK_ID}"
+          else
+            npx -y tsx runner/dispatcher.ts
+          fi
+          rc=$?
+          # Exit code 3 means "no work", which is a normal tick, not a failure.
+          if [ "$rc" -eq 3 ]; then
+            echo "no_work=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          exit "$rc"
+        env:
+          TASK_ID: ${{ inputs.task_id }}
+
+      - name: Run one bounded factory task
+        if: steps.select.outputs.no_work != 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: ./runner/run-task.sh "$FACTORY_TASK_ID"
+
+      - name: Upload run artifacts
+        if: always() && steps.select.outputs.no_work != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: factory-run-${{ env.FACTORY_TASK_ID }}
+          path: |
+            .claude/factory/runs/
+            .claude/factory/queue/
+            .claude/factory/failures.jsonl
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Report failure to the source issue
+        if: failure() && steps.select.outputs.no_work != 'true' && env.FACTORY_ISSUE != ''
+        run: |
+          set -euo pipefail
+          # The run state on the issue is the durable record; this comment is the
+          # human-facing pointer at the logs. The reconciler decides what happens next.
+          gh issue comment "$FACTORY_ISSUE" --body \
+            "Factory run for \`${FACTORY_TASK_ID}\` failed. Logs: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}. The reconciler will decide whether this is retryable within budget."

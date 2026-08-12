@@ -1,0 +1,148 @@
+name: Factory CI
+
+# The deterministic final gate. CI, not the agent's self-report, decides whether a
+# factory PR is mergeable. Read-only permissions by default.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: factory-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  harness-tests:
+    # The runner decides whether a branch may be pushed. It gets tested like anything
+    # else that can be wrong. This job is why the parser, the path matcher, and the
+    # reconciliation policy are pure functions.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Commands come from .claude/factory/factory.yaml via the same parser the runner
+      # uses, so CI and the agent cannot disagree about what the gates are.
+      #
+      # They are passed through the environment rather than interpolated into `run:`.
+      # A `${{ }}` expression is substituted into the script before the shell sees it,
+      # so a command in a config file could inject shell of its own choosing.
+      - name: Read configured commands
+        id: cmds
+        run: |
+          set -euo pipefail
+          for gate in setup lint typecheck test; do
+            cmd="$(npx -y tsx runner/command.ts "$gate" || true)"
+            if [ -z "$cmd" ]; then
+              echo "${gate}=" >> "$GITHUB_OUTPUT"
+              echo "::warning::gate '${gate}' is unset or TODO in factory.yaml — it is not being enforced"
+            else
+              {
+                echo "${gate}<<FACTORY_EOF"
+                echo "$cmd"
+                echo "FACTORY_EOF"
+              } >> "$GITHUB_OUTPUT"
+            fi
+          done
+
+      - name: Setup
+        if: steps.cmds.outputs.setup != ''
+        env:
+          FACTORY_CMD: ${{ steps.cmds.outputs.setup }}
+        run: bash -euo pipefail -c "$FACTORY_CMD"
+
+      - name: Lint
+        if: steps.cmds.outputs.lint != ''
+        env:
+          FACTORY_CMD: ${{ steps.cmds.outputs.lint }}
+        run: bash -euo pipefail -c "$FACTORY_CMD"
+
+      - name: Typecheck
+        if: steps.cmds.outputs.typecheck != ''
+        env:
+          FACTORY_CMD: ${{ steps.cmds.outputs.typecheck }}
+        run: bash -euo pipefail -c "$FACTORY_CMD"
+
+      - name: Test
+        if: steps.cmds.outputs.test != ''
+        env:
+          FACTORY_CMD: ${{ steps.cmds.outputs.test }}
+        run: bash -euo pipefail -c "$FACTORY_CMD"
+
+  harness-integrity:
+    # A factory PR must not change the rules the factory is judged by.
+    # Harness changes are legitimate — they just need a separate, human-authored PR.
+    #
+    # This runs for every PR, not only factory branches: a job that is skipped by an
+    # `if:` reports as skipped, and a required check that never actually evaluates is
+    # a check in name only. Non-factory branches pass it trivially and say so.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Block self-modification of guardrails
+        if: startsWith(github.head_ref, 'factory/')
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          git fetch origin "$BASE_REF" --depth=1 --quiet || true
+          # The same implementation the runner uses. A second copy of the guarded list
+          # in a grep here is exactly how two layers drift apart.
+          git diff --name-only "origin/${BASE_REF}...HEAD" \
+            | npx -y tsx runner/paths.ts --guarded-only
+
+      - name: Confirm the check evaluated
+        if: ${{ !startsWith(github.head_ref, 'factory/') }}
+        run: echo "Not a factory branch — harness integrity is enforced by review."
+
+      - name: Block weakened tests
+        if: startsWith(github.head_ref, 'factory/')
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          diff="$(git diff "origin/${BASE_REF}...HEAD" -- '*test*' '*spec*' || true)"
+          # Added skip/only markers, or deleted assertions, need a human to sign off.
+          added_skips="$(printf '%s\n' "$diff" | grep -E '^\+.*(\.skip|\.only|xit\(|xdescribe\(|@pytest\.mark\.skip|t\.Skip\()' || true)"
+          if [ -n "$added_skips" ]; then
+            echo "::error::Factory branch skips or isolates tests:"
+            printf '%s\n' "$added_skips"
+            exit 1
+          fi
+          deleted_tests="$(printf '%s\n' "$diff" | grep -cE '^-\s*(it|test|def test_|func Test)' || true)"
+          if [ "${deleted_tests:-0}" -gt 0 ]; then
+            echo "::error::Factory branch deletes ${deleted_tests} test(s). This requires human review."
+            exit 1
+          fi
