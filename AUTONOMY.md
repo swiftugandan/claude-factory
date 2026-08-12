@@ -164,9 +164,13 @@ because without them the argument does not hold. Override with `FACTORY_PERMISSI
 - repeated human edit after agent PRs → update the relevant workflow;
 - successful repeated pattern across repositories → versioned plugin capability.
 
-The ledger is written by `hooks/capture-failure.sh` on `PostToolUse`, which decides for
-itself whether the call failed and records the tool, the invocation, and the actual error
-text. An entry saying only that something failed is not evidence anyone can evolve from.
+The ledger is written by `hooks/capture-failure.sh` on `PostToolUseFailure` and
+`PostToolUse`, recording the tool, the invocation, and the actual error text. An entry saying
+only that something failed is not evidence anyone can evolve from.
+
+`PostToolUse` fires only after a call succeeds, so `PostToolUseFailure` is the registration
+that makes the ledger fill at all; `PostToolUse` catches tools that report an error in-band
+while the call itself succeeds.
 
 ## Setup
 

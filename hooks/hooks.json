@@ -35,6 +35,17 @@
         ]
       }
     ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/capture-failure.sh"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
