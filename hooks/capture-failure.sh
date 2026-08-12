@@ -1,11 +1,22 @@
 #!/usr/bin/env bash
 # Append failed tool calls to the failure ledger.
 #
-# This runs on PostToolUse and decides for itself whether the call failed. It used to
-# be registered on `PostToolUseFailure`, which is not a Claude Code hook event — the
-# entry was silently ignored, the ledger stayed empty, and `/factory-evolve` had no
-# evidence to evolve from. The learning loop is only as good as its input, so the entry
-# now records what failed, not merely that something did.
+# Registered on BOTH `PostToolUse` and `PostToolUseFailure`.
+#
+# `PostToolUseFailure` is where real failures arrive. `PostToolUse` fires only after a
+# tool call *succeeds*, so a hook registered there alone never sees a failed Bash
+# command, a blocked write, or a non-zero exit — no matter how good its detection is.
+# An earlier revision dropped `PostToolUseFailure` on the belief that it was not a
+# Claude Code hook event; it is one, and dropping it left the ledger permanently empty
+# while looking correctly wired.
+#
+# The two events are disjoint — one fires on success, the other on failure — so being
+# registered on both cannot double-count a single call. `hook_event_name` and
+# `tool_use_id` are recorded on every entry so that assumption is checkable in the data
+# rather than merely asserted here: duplicates would share a `tool_use_id`.
+#
+# `PostToolUse` is kept because some tools report an error in-band while the call itself
+# succeeds, which is what the response-shape sniffing below is for.
 #
 # Observational, not a guardrail: this never blocks a tool call.
 set -uo pipefail
@@ -25,16 +36,23 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 0
 fi
 
-# A tool call counts as failed when the response says so in any of the shapes the
-# harness emits. Unknown shapes are treated as success: a ledger full of false
+# On `PostToolUseFailure` the event itself is the signal: the call failed, whatever
+# shape the response happens to take. Sniffing it there would only reintroduce the
+# possibility of discarding a real failure because its payload was unfamiliar.
+#
+# On `PostToolUse` the call succeeded, so a ledger entry requires the response to say
+# otherwise. Unknown shapes are treated as success there: a ledger full of false
 # positives is triaged the same way as one that is empty — by nobody.
 failed="$(printf '%s' "$input" | jq -r '
-  (.tool_response // empty) as $r
-  | if ($r | type) == "object" then
-      (($r.is_error == true) or ($r.success == false) or (($r.error // "") != ""))
-    elif ($r | type) == "string" then
-      ($r | test("^\\s*(Error|Exception|Traceback)"; "i"))
-    else false end
+  if (.hook_event_name // "") == "PostToolUseFailure" then true
+  else
+    (.tool_response // empty) as $r
+    | if ($r | type) == "object" then
+        (($r.is_error == true) or ($r.success == false) or (($r.error // "") != ""))
+      elif ($r | type) == "string" then
+        ($r | test("^\\s*(Error|Exception|Traceback)"; "i"))
+      else false end
+  end
 ' 2>/dev/null || echo "false")"
 
 [ "$failed" = "true" ] || exit 0
@@ -46,6 +64,11 @@ printf '%s' "$input" | jq -c \
     timestamp: $timestamp,
     session_id: (.session_id // "unknown"),
     status: $status,
+    # Which event recorded this, and which call it was. Two entries sharing a
+    # tool_use_id would mean the events are not disjoint after all — a claim worth
+    # being able to check rather than assume.
+    event: (.hook_event_name // "unknown"),
+    tool_use_id: (.tool_use_id // null),
     tool: (.tool_name // "unknown"),
     cwd: (.cwd // null),
     # The specific invocation, so a reader can reproduce it without the transcript.

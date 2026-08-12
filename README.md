@@ -127,9 +127,14 @@ replacing existing hooks, and copies the scripts to `.claude/hooks/` with the ex
 that flips a quality gate in `factory.yaml` to `false`. The agent may propose harness changes
 through a separately reviewed PR; it may not make them mid-run.
 
-`capture-failure.sh` runs on `PostToolUse` and decides for itself whether the call failed,
-recording the tool, the invocation, and the actual error text. It is observational and never
-blocks. The hook scripts require `jq` and `bash`. `check-dirty-worktree.sh` is advisory only — it
+`capture-failure.sh` runs on `PostToolUseFailure` and `PostToolUse`, recording the tool, the
+invocation, and the actual error text. It is observational and never blocks.
+
+Both registrations matter. `PostToolUse` fires only after a call *succeeds*, so a hook
+registered there alone never sees a failed command — it is `PostToolUseFailure` that carries
+real failures. `PostToolUse` is kept because some tools report an error in-band while the call
+itself succeeds. The two events are disjoint, so being on both cannot double-count; each entry
+records its `event` and `tool_use_id` so that is checkable rather than assumed. The hook scripts require `jq` and `bash`. `check-dirty-worktree.sh` is advisory only — it
 reports an uncommitted worktree at session end and never blocks or commits.
 
 Do not auto-approve broad permissions in interactive use. A factory should tighten the action
