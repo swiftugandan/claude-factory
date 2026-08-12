@@ -89,6 +89,13 @@ jobs:
       - name: Run one bounded factory task
         if: steps.select.outputs.no_work != 'true'
         env:
+          # Subscription auth. Generate with `claude setup-token` on a machine where
+          # you are already signed in, and store the result as a repository secret.
+          # Runs bill against your Claude subscription and share its rate limits with
+          # your interactive sessions — a scheduled factory competes with your own work.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Optional alternative: pay-per-token API billing with a separate quota.
+          # Set one or the other, not both — run-task.sh refuses if neither is present.
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: ./runner/run-task.sh "$FACTORY_TASK_ID"
 

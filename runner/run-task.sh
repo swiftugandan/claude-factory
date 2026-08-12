@@ -36,6 +36,19 @@ for tool in jq git claude npx; do
 done
 [ -f "$TASK_FILE" ] || { echo "run-task: no task contract at $TASK_FILE" >&2; exit 1; }
 
+# Credentials. A headless run cannot open a browser to sign in, so an unauthenticated
+# run would burn its worktree setup and fail at the first model call. Fail here instead.
+#
+# CLAUDE_CODE_OAUTH_TOKEN uses a Claude subscription — generate it with
+# `claude setup-token` where you are already signed in. ANTHROPIC_API_KEY is the
+# pay-per-token alternative. On a developer machine an interactive login already
+# stored on disk is enough, so only require one of these in CI.
+if [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -z "${ANTHROPIC_API_KEY:-}" ] && [ -n "${CI:-}" ]; then
+  echo "run-task: no credential — set CLAUDE_CODE_OAUTH_TOKEN (from 'claude setup-token'," >&2
+  echo "run-task: which uses your Claude subscription) or ANTHROPIC_API_KEY." >&2
+  exit 78
+fi
+
 mkdir -p "$RUNS_DIR"
 
 tsx_run() { npx -y tsx "$@"; }

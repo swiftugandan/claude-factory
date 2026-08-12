@@ -170,9 +170,29 @@ text. An entry saying only that something failed is not evidence anyone can evol
 
 ## Setup
 
+### Credentials
+
+The runner needs one of two, not both:
+
 ```bash
-# repository secrets
-ANTHROPIC_API_KEY
+# Claude subscription (no API key required). Run this where you are already
+# signed in, then store the printed token as the CLAUDE_CODE_OAUTH_TOKEN secret.
+claude setup-token
+```
+
+`CLAUDE_CODE_OAUTH_TOKEN` bills against your Claude subscription and **shares its rate
+limits with your interactive sessions** — a factory claiming a task every 30 minutes
+competes with your own work for the same capacity. That is the main argument for the
+alternative, `ANTHROPIC_API_KEY`, which is pay-per-token against a separate quota. Start
+on the subscription token; move to an API key when contention becomes the constraint.
+
+`run-task.sh` refuses to start in CI when neither is set, rather than provisioning a
+worktree and failing at the first model call.
+
+```bash
+# repository secrets — set one
+CLAUDE_CODE_OAUTH_TOKEN   # subscription auth, from `claude setup-token`
+ANTHROPIC_API_KEY         # or pay-per-token API billing
 
 # repository variables (optional)
 FACTORY_PLUGIN_REF   # where CI installs the claude-factory plugin from
