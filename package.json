@@ -1,0 +1,19 @@
+{
+  "name": "claude-factory",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Runner and self-tests for the claude-factory delivery harness",
+  "type": "module",
+  "engines": {
+    "node": ">=20.6"
+  },
+  "scripts": {
+    "test": "node --import tsx --test runner/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}

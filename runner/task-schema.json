@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://claude-factory/task-schema.json",
+  "title": "Claude Factory task contract",
+  "description": "A bounded, claimable unit of autonomous work. A task without acceptance criteria and allowed paths is not claimable.",
+  "type": "object",
+  "required": ["id", "title", "status", "owner", "acceptance_criteria", "allowed_paths", "risk", "budget"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$",
+      "description": "Stable identifier, also used for the branch, worktree, and run artifacts."
+    },
+    "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "ready", "claimed", "in_review", "blocked", "done"],
+      "description": "Only 'ready' tasks may be claimed by the dispatcher."
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human accountable for the task. An escalation with no addressee is a dropped escalation, so this is required."
+    },
+    "source": {
+      "type": "object",
+      "description": "Where this task came from, so escalations can be routed back.",
+      "properties": {
+        "system": { "type": "string", "enum": ["github", "linear", "jira", "manual"] },
+        "url": { "type": "string" },
+        "number": { "type": ["integer", "string"] }
+      }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Observable, testable statements. Vague roadmap wording is not an acceptance criterion."
+    },
+    "allowed_paths": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Glob patterns. The run must not modify files outside these paths."
+    },
+    "forbidden_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional explicit denies, evaluated after allowed_paths."
+    },
+    "context": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Files, docs, or runbooks the agent should read before implementing."
+    },
+    "risk": {
+      "type": "object",
+      "required": ["level"],
+      "additionalProperties": false,
+      "properties": {
+        "level": { "type": "string", "enum": ["low", "medium", "high"] },
+        "requires_human_merge": { "type": "boolean", "default": true },
+        "requires_human_deploy": { "type": "boolean", "default": true },
+        "touches_schema": { "type": "boolean", "default": false },
+        "touches_external_writes": { "type": "boolean", "default": false }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "required": ["max_runtime_minutes", "max_attempts"],
+      "additionalProperties": false,
+      "properties": {
+        "max_runtime_minutes": { "type": "integer", "minimum": 1, "maximum": 120 },
+        "max_attempts": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "max_cost_usd": { "type": "number", "minimum": 0 }
+      }
+    },
+    "attempts": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Incremented by the runner. Not set by hand."
+    },
+    "claimed_at": { "type": "string" },
+    "claimed_by": { "type": "string" }
+  }
+}
