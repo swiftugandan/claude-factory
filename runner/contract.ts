@@ -8,7 +8,13 @@
  */
 
 import { readFileSync } from "node:fs";
-import { fencedYamlBlocks, parseYaml, YamlError, type YamlValue } from "./yaml.ts";
+import {
+  fencedYamlBlocks,
+  hasUnterminatedYamlFence,
+  parseYaml,
+  YamlError,
+  type YamlValue,
+} from "./yaml.ts";
 import { validate, type Schema } from "./schema.ts";
 
 export type TaskStatus = "draft" | "ready" | "claimed" | "in_review" | "blocked" | "done";
@@ -83,8 +89,20 @@ function looksLikeContract(value: YamlValue): boolean {
  */
 export function parseTaskContract(body: string): ParseResult {
   const blocks = fencedYamlBlocks(body ?? "");
+
+  // Report this alongside whatever else we find. An unterminated block is invisible
+  // to the extractor, so without this the reported problems describe a different
+  // block entirely and the author edits the wrong text.
+  const unterminated = hasUnterminatedYamlFence(body ?? "")
+    ? ["an unterminated ```yaml block was ignored — check its closing fence"]
+    : [];
+
   if (!blocks.length) {
-    return { task: null, problems: ["no fenced ```yaml task contract in the body"], blockIndex: null };
+    return {
+      task: null,
+      problems: [...unterminated, "no fenced ```yaml task contract in the body"],
+      blockIndex: null,
+    };
   }
 
   const candidates: Array<{ index: number; value: YamlValue }> = [];
@@ -105,9 +123,12 @@ export function parseTaskContract(body: string): ParseResult {
   if (!candidates.length) {
     return {
       task: null,
-      problems: parseErrors.length
-        ? parseErrors
-        : ["no fenced yaml block contained a task contract (needs at least 'id' and 'status')"],
+      problems: [
+        ...unterminated,
+        ...(parseErrors.length
+          ? parseErrors
+          : ["no fenced yaml block contained a task contract (needs at least 'id' and 'status')"]),
+      ],
       blockIndex: null,
     };
   }
@@ -120,7 +141,11 @@ export function parseTaskContract(body: string): ParseResult {
     if (!problems.length) {
       return { task: candidate.value as unknown as Task, problems: [], blockIndex: candidate.index };
     }
-    firstFailure ??= { task: null, problems, blockIndex: candidate.index };
+    firstFailure ??= {
+      task: null,
+      problems: [...unterminated, ...problems.map((p) => `block ${candidate.index + 1} ${p}`)],
+      blockIndex: candidate.index,
+    };
   }
   return firstFailure!;
 }

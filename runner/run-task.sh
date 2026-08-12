@@ -341,14 +341,21 @@ if command -v gh >/dev/null; then
     --jq '.[0].number // empty' 2>/dev/null || true)"
 
   if [ -n "$EXISTING_PR" ]; then
-    gh pr comment "$EXISTING_PR" --body-file "$BODY_FILE" \
-      || echo "run-task: could not comment on PR #${EXISTING_PR}" >&2
+    if gh pr comment "$EXISTING_PR" --body-file "$BODY_FILE"; then
+      PR_STATE="updated PR #${EXISTING_PR}"
+    else
+      echo "run-task: could not comment on PR #${EXISTING_PR}" >&2
+    fi
   else
-    gh pr create --draft \
+    if gh pr create --draft \
       --title "factory(${TASK_ID}): ${TITLE}" \
       --body-file "$BODY_FILE" \
       --base "$BASE_BRANCH" \
-      --head "$BRANCH" || echo "run-task: pr create failed; branch is pushed" >&2
+      --head "$BRANCH"; then
+      PR_STATE="draft PR opened"
+    else
+      echo "run-task: pr create failed; branch is pushed" >&2
+    fi
   fi
   rm -f "$BODY_FILE"
 
@@ -361,4 +368,7 @@ fi
 state_write "$(jq -nc --arg s in_review --argjson a "$ATTEMPT" --arg u "$RUN_URL" \
   --argjson c "${COST:-0}" '{status:$s, attempts:$a, last_run_url:$u, cost_usd:$c}')"
 
-echo "run-task: ${TASK_ID} complete — draft PR opened on ${BRANCH}"
+# Report what actually happened. Claiming a PR was opened when `gh pr create` failed
+# is the same class of error the harness exists to prevent in the agent — a success
+# line that outruns the evidence. The branch is pushed either way; say which it was.
+echo "run-task: ${TASK_ID} complete — ${PR_STATE:-branch pushed, NO PR} on ${BRANCH}"

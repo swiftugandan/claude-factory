@@ -51,7 +51,8 @@ Decisions a human needs to make.
 
 ## Attempts and evidence
 
-Attach or link the run transcript from `.claude/factory/runs/<TASK_ID>.json`. If the run
+Attach or link the run transcript from `.claude/factory/runs/<TASK_ID>-attempt-<N>.json`
+(one per attempt; the runner uploads the whole directory as a CI artifact). If the run
 went through `/factory-repair`, say so and state which gate failed initially — a PR that
 needed repair is a different review object than one that passed first time.
 

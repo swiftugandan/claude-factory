@@ -40,6 +40,11 @@ Then:
 3. Copy the safe default hooks from this plugin's `hooks/` directory into `.claude/hooks/`,
    make them executable, and merge the entries from `hooks/hooks.json` into the project's
    `.claude/settings.json` rather than replacing existing hooks.
+   If the project will run without the plugin installed (vendored harness, or a CI image
+   that only has the CLI), also copy this plugin's `agents/` into `.claude/agents/` and
+   `skills/` into `.claude/skills/`. The factory workflow names `factory-reviewer` and
+   `factory-test-engineer` explicitly; when they are absent the agent silently substitutes
+   general-purpose agents, and the review gate stops meaning what the manifest says.
 4. Add a `docs/runbooks/` directory if one is absent.
 5. Create an initial acceptance test placeholder only if no test structure exists.
 6. Print a concise setup report and identify commands that still need human confirmation.

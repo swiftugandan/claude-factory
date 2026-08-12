@@ -251,6 +251,27 @@ export function parseYaml(src: string): YamlValue {
   return value;
 }
 
+/**
+ * True when the body ends inside an unclosed ```yaml block.
+ *
+ * `fencedYamlBlocks` cannot see such a block at all, so a forgotten closing fence
+ * makes the contract silently invisible — and the caller then reports problems about
+ * whichever *other* block it did find, sending the author to edit the wrong text.
+ * Detecting it separately is what turns that into an accurate message.
+ */
+export function hasUnterminatedYamlFence(markdown: string): boolean {
+  const FENCE = /^[ \t]*```[ \t]*([A-Za-z0-9_-]*)[ \t]*$/;
+  let openLanguage: string | null = null;
+
+  for (const line of (markdown ?? "").split(/\r?\n/)) {
+    const m = line.match(FENCE);
+    if (!m) continue;
+    // Inside a fence, any fence line closes it; outside, it opens one.
+    openLanguage = openLanguage === null ? m[1].toLowerCase() : null;
+  }
+  return openLanguage === "yaml" || openLanguage === "yml";
+}
+
 /** Extract every fenced ```yaml block from a markdown body, in order. */
 export function fencedYamlBlocks(markdown: string): string[] {
   const blocks: string[] = [];

@@ -84,6 +84,37 @@ test("an incomplete contract reports every problem", () => {
   assert.match(problems.join(), /budget/);
 });
 
+test("an unterminated yaml block is named, not silently ignored", () => {
+  // The extractor cannot see an unclosed block at all. Without an explicit check the
+  // reported problems describe whichever block *was* found, sending the author to
+  // edit the wrong text — which is exactly what happened the first time this ran.
+  const markdown = [
+    "Reference shape:",
+    "```yaml",
+    "id: EXAMPLE",
+    "status: draft",
+    "```",
+    "Actual task:",
+    "```yaml",
+    CONTRACT.trim(), // no closing fence
+  ].join("\n");
+
+  const { task, problems } = parseTaskContract(markdown);
+  assert.equal(task, null);
+  assert.match(problems.join(" "), /unterminated/);
+  assert.match(problems.join(" "), /closing fence/);
+});
+
+test("a closed body reports no unterminated-fence problem", () => {
+  const { problems } = parseTaskContract(body("id: X\nstatus: ready\n"));
+  assert.doesNotMatch(problems.join(" "), /unterminated/);
+});
+
+test("validation problems name the block they came from", () => {
+  const { problems } = parseTaskContract(body("id: ENG-9\nstatus: ready\ntitle: vague\n"));
+  assert.match(problems.join(" "), /block 1/);
+});
+
 test("a malformed yaml block is a parse problem, not a crash", () => {
   const { task, problems } = parseTaskContract(body("id: ENG-9\n\tstatus: ready\n"));
   assert.equal(task, null);
