@@ -10,8 +10,21 @@ on:
         description: "Claim a specific task instead of the oldest ready one"
         required: false
         type: string
-  schedule:
-    - cron: "*/30 * * * *"
+
+  # The schedule is deliberately commented out, not deleted.
+  #
+  # Scheduled claiming is the `queue` autonomy level — step 3 of the rollout in
+  # AUTONOMY.md — and turning it on is a decision an operator makes after watching
+  # real failure modes at `pr_only` and `repair`, not a default a fresh clone
+  # inherits. Until then, dispatch runs are started by a human from the Actions
+  # tab, which is exactly what `pr_only` grants.
+  #
+  # Uncommenting this alone does not start anything: `dispatcher.ts` still refuses
+  # a scheduled claim unless `autonomy.level` in .claude/factory/factory.yaml is
+  # `queue` or higher. Both have to be true.
+  #
+  # schedule:
+  #   - cron: "*/30 * * * *"
 
 concurrency:
   # One factory run at a time. Parallel runs make the failure ledger unreadable

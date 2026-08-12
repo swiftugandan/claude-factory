@@ -105,6 +105,16 @@ npx tsx runner/reconcile.ts --dry-run
 Durable state lives on the GitHub issue — a label plus one machine-readable comment — never in
 the workspace, which CI recreates empty on every tick.
 
+> **The scheduled dispatcher ships disabled.** The `cron` trigger in
+> [`.github/workflows/factory-dispatch.yml`](.github/workflows/factory-dispatch.yml) is
+> commented out, so a fresh clone claims nothing on its own — dispatch runs start from the
+> Actions tab, by a human. Scheduled claiming is the `queue` autonomy level, and moving there
+> is a decision you make after watching real failure modes at the levels below it.
+>
+> Re-enabling takes two independent changes, on purpose: uncomment the `cron` line **and** set
+> `autonomy.level: queue` in `.claude/factory/factory.yaml`. Either one alone is inert, so a
+> stray edit to a workflow file cannot by itself put the factory on a timer.
+
 Start at `autonomy.level: pr_only` in `factory.yaml` and move a level only after watching real
 failure modes at the current one. The level is enforced by the runner, not just documented: at
 `pr_only` a scheduled tick claims nothing, and a missing manifest resolves to `off`. Long-running
